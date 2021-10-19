@@ -1,4 +1,4 @@
-This is a project for NLW Heat Weekend
+This is a project for NLW Heat Weeked, this is the backend development in Node Js
 
 ### .env 
 GITHUB_CLIENT_SECRET=
