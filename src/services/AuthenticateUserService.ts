@@ -1,18 +1,20 @@
 import axios from 'axios';
+import prismaClient from '../prisma';
+import { sign } from 'jsonwebtoken';
 
 interface AccessTokenProps {
-	"access_token": String;
+	"access_token": string;
 }
 
 interface UserProps {
-	avatar_url: String;
-	login: String;
+	avatar_url: string;
+	login: string;
 	id: number;
-	name: String;
+	name: string;
 }
 
 export class AuthenticateUserService {
-	async execute(code: String) {
+	async execute(code: string) {
 		const url = 'https://github.com/login/oauth/access_token';
 
 		const { data: accessTokenResponse } = await axios.post<AccessTokenProps>(url, null, {
@@ -32,6 +34,40 @@ export class AuthenticateUserService {
 			}
 		});
 
-		return response.data;
+		const { login, id, avatar_url, name } = response.data;
+
+		let user = await prismaClient.user.findFirst({
+			where: {
+				github_id: id
+			}
+		})
+
+		if (!user) {
+			user = await prismaClient.user.create({
+				data: {
+					github_id: id,
+					login,
+					avatar_url,
+					name,
+				}
+			})
+		}
+
+		const token = sign(
+		{
+			user: {
+				name: user.name,
+				avatar_url: user.avatar_url,
+				id: user.id,
+			}
+		},
+		process.env.JWT_SECRET as string,
+		{
+			subject: user.id,
+			expiresIn: '1d'
+		}
+		);
+
+		return { token, user };
 	}
 }
